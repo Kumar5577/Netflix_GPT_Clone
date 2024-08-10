@@ -1,16 +1,52 @@
 import { useDispatch, useSelector } from "react-redux";
 import { logo_url } from "../utils/links";
-import { removeUser } from "../utils/userSlice";
+import { addUser, removeUser } from "../utils/userSlice";
 import { useNavigate } from "react-router-dom";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "../utils/firebase";
+import { useEffect } from "react";
 
 const Header = () => {
   const user = useSelector((store)=>store.user)
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const handleSignout = ()=>{
-    dispatch(removeUser());
-    navigate("/");
+    signOut(auth).then(() => {
+      // Sign-out successful.
+      dispatch(removeUser());
+    }).catch((error) => {
+      // An error happened.
+    });
+    
+  
+    
   }
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in, see docs for a list of available properties
+        // https://firebase.google.com/docs/reference/js/auth.user
+        const { uid, email, displayName, photoURL } = user;
+        dispatch(
+          addUser({
+            uid: uid,
+            email: email,
+            displayName: displayName,
+            photoURL: photoURL,
+          })
+        );
+        navigate("/browse");
+        // ...
+      } else {
+        // User is signed out
+        // ...
+        dispatch(removeUser());
+        navigate("/");
+      }
+    });
+    // unsubscribe called when component unmounts
+    return ()=> unsubscribe();
+  }, []);
   return (
     <div className="absolute w-screen bg-gradient-to-b from-black z-10 flex justify-between">
       <img className="w-44" src={logo_url} alt="Netflix-logo" />
